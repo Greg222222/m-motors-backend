@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+email-validator
+pydantic-settings
+python-jose
+passlib
+python-multipart
+slowapi
+httpx
+psycopg2-binary
+pytest
+pytest-cov
