@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import require_admin
 from app.models import Vehicle, VehicleMode
-from app.schemas import VehicleCreate, VehicleOut
+from app.schemas import VehicleCreate, VehicleModeUpdate, VehicleOut
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
@@ -30,6 +30,28 @@ def create_vehicle(
 
     vehicle = Vehicle(**payload.model_dump())
     db.add(vehicle)
+    db.commit()
+    db.refresh(vehicle)
+    return vehicle
+
+
+@router.patch("/{vehicle_id}/mode", response_model=VehicleOut)
+def update_vehicle_mode(
+    vehicle_id: int,
+    payload: VehicleModeUpdate,
+    db: Session = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    """US-05: toggle a vehicle between Sale and Rent (or both)."""
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if vehicle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+    if vehicle.is_engaged:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Vehicle is engaged in an ongoing dossier and cannot be switched",
+        )
+    vehicle.mode = payload.mode
     db.commit()
     db.refresh(vehicle)
     return vehicle

@@ -51,3 +51,29 @@ def test_list_vehicles_filters_by_mode(client, admin_token):
     assert response.status_code == 200
     brands = [v["brand"] for v in response.json()]
     assert brands == ["Peugeot"]
+
+
+def test_toggle_vehicle_mode(client, admin_token):
+    create = client.post(
+        "/vehicles",
+        json={
+            "brand": "Citroen",
+            "model": "C3",
+            "mileage": 3000,
+            "price_sale": 8000,
+            "price_rent_monthly": 200,
+            "mode": "sale",
+        },
+        headers=auth_header(admin_token),
+    )
+    vehicle_id = create.json()["id"]
+    response = client.patch(
+        f"/vehicles/{vehicle_id}/mode", json={"mode": "rent"}, headers=auth_header(admin_token)
+    )
+    assert response.status_code == 200
+    assert response.json()["mode"] == "rent"
+
+
+def test_toggle_mode_on_unknown_vehicle_returns_404(client, admin_token):
+    response = client.patch("/vehicles/999/mode", json={"mode": "rent"}, headers=auth_header(admin_token))
+    assert response.status_code == 404
