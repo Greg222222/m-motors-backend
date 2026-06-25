@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import auth
+from app.routers import auth, vehicles
 from app.routers.auth import limiter
 
 Base.metadata.create_all(bind=engine)
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(vehicles.router)
 
 
 @app.get("/health")
