@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
-from app.models import DossierStatus, DossierType, Role, VehicleMode
+from app.models import DossierStatus, DossierType, FuelType, Role, VehicleMode
 
 
 class UserCreate(BaseModel):
@@ -27,7 +27,12 @@ class Token(BaseModel):
 class VehicleCreate(BaseModel):
     brand: str = Field(min_length=1, max_length=100)
     model: str = Field(min_length=1, max_length=100)
+    year: int = Field(ge=1990, le=2100)
     mileage: int = Field(ge=0)
+    color: str = Field(min_length=1, max_length=50)
+    fuel_type: FuelType
+    description: str = Field(default="", max_length=2000)
+    image_url: str | None = Field(default=None, max_length=500)
     price_sale: float | None = Field(default=None, ge=0)
     price_rent_monthly: float | None = Field(default=None, ge=0)
     mode: VehicleMode
@@ -39,11 +44,26 @@ class VehicleOut(BaseModel):
     id: int
     brand: str
     model: str
+    year: int
     mileage: int
+    color: str
+    fuel_type: FuelType
+    description: str
+    image_url: str | None
     price_sale: float | None
     price_rent_monthly: float | None
     mode: VehicleMode
     is_engaged: bool
+
+
+class VehicleBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    brand: str
+    model: str
+    year: int
+    image_url: str | None
 
 
 class VehicleModeUpdate(BaseModel):
@@ -53,6 +73,13 @@ class VehicleModeUpdate(BaseModel):
 class DossierCreate(BaseModel):
     vehicle_id: int
     type: DossierType
+
+
+class UserBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
 
 
 class DossierOut(BaseModel):
@@ -65,6 +92,8 @@ class DossierOut(BaseModel):
     status: DossierStatus
     refusal_reason: str | None
     created_at: datetime
+    vehicle: VehicleBrief
+    user: UserBrief
 
 
 class DossierDecision(BaseModel):

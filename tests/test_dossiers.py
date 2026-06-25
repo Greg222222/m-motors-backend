@@ -2,16 +2,19 @@ def auth_header(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_vehicle(client, admin_token):
+def _create_vehicle(client, admin_token, mode="both"):
     response = client.post(
         "/vehicles",
         json={
             "brand": "Renault",
             "model": "Clio",
+            "year": 2022,
             "mileage": 1000,
+            "color": "Bleu",
+            "fuel_type": "essence",
             "price_sale": 9000,
             "price_rent_monthly": 220,
-            "mode": "both",
+            "mode": mode,
         },
         headers=auth_header(admin_token),
     )
@@ -32,6 +35,30 @@ def test_create_dossier_unknown_vehicle_returns_404(client, client_token):
         "/dossiers", json={"vehicle_id": 999, "type": "achat"}, headers=auth_header(client_token)
     )
     assert response.status_code == 404
+
+
+def test_create_dossier_rejects_incompatible_type(client, client_token, admin_token):
+    vehicle_id = _create_vehicle(client, admin_token, mode="rent")
+    response = client.post(
+        "/dossiers", json={"vehicle_id": vehicle_id, "type": "achat"}, headers=auth_header(client_token)
+    )
+    assert response.status_code == 422
+
+
+def test_create_dossier_rejects_already_engaged_vehicle(client, client_token, admin_token):
+    vehicle_id = _create_vehicle(client, admin_token)
+    client.post("/dossiers", json={"vehicle_id": vehicle_id, "type": "achat"}, headers=auth_header(client_token))
+
+    other_client = client.post("/auth/register", json={"email": "other@example.com", "password": "Password123"})
+    assert other_client.status_code == 201
+    other_token = client.post(
+        "/auth/login", data={"username": "other@example.com", "password": "Password123"}
+    ).json()["access_token"]
+
+    response = client.post(
+        "/dossiers", json={"vehicle_id": vehicle_id, "type": "achat"}, headers=auth_header(other_token)
+    )
+    assert response.status_code == 409
 
 
 def test_client_sees_only_own_dossiers(client, client_token, admin_token):

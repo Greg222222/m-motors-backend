@@ -18,6 +18,15 @@ def list_vehicles(mode: VehicleMode | None = None, db: Session = Depends(get_db)
     return query.order_by(Vehicle.id).all()
 
 
+@router.get("/{vehicle_id}", response_model=VehicleOut)
+def get_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
+    """US-01: vehicle detail page (photo, description, full characteristics)."""
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if vehicle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+    return vehicle
+
+
 @router.post("", response_model=VehicleOut, status_code=status.HTTP_201_CREATED)
 def create_vehicle(
     payload: VehicleCreate, db: Session = Depends(get_db), _admin=Depends(require_admin)
