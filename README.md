@@ -26,6 +26,16 @@ uvicorn app.main:app --reload
 L'API est servie sur `http://localhost:8000` (`/health` pour vérifier qu'elle tourne,
 `/docs` pour la documentation Swagger générée automatiquement).
 
+## Créer le compte admin (back-office)
+
+`/auth/register` crée toujours un compte `client` (une route non authentifiée ne doit
+jamais pouvoir s'auto-attribuer les droits admin). Le premier compte back-office se
+crée explicitement, une fois la base de données initialisée :
+
+```bash
+python -m scripts.create_admin admin@m-motors.fr "StrongPassword123"
+```
+
 ## Tests et couverture
 
 ```bash
