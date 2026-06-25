@@ -3,8 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user, require_admin
-from app.models import Dossier, DossierStatus, User, Vehicle
+from app.models import Dossier, DossierStatus, DossierType, User, Vehicle, VehicleMode
 from app.schemas import DossierCreate, DossierDecision, DossierOut
+
+COMPATIBLE_MODES = {
+    DossierType.achat: (VehicleMode.sale, VehicleMode.both),
+    DossierType.location: (VehicleMode.rent, VehicleMode.both),
+}
 
 router = APIRouter(prefix="/dossiers", tags=["dossiers"])
 
@@ -17,6 +22,13 @@ def create_dossier(
     vehicle = db.query(Vehicle).filter(Vehicle.id == payload.vehicle_id).first()
     if vehicle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+    if vehicle.is_engaged:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Vehicle is already engaged in another dossier")
+    if vehicle.mode not in COMPATIBLE_MODES[payload.type]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"This vehicle is not available for '{payload.type.value}'",
+        )
 
     dossier = Dossier(user_id=user.id, vehicle_id=vehicle.id, type=payload.type)
     vehicle.is_engaged = True

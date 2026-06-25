@@ -45,13 +45,25 @@ class User(Base):
     dossiers: Mapped[list["Dossier"]] = relationship(back_populates="user")
 
 
+class FuelType(str, enum.Enum):
+    essence = "essence"
+    diesel = "diesel"
+    hybride = "hybride"
+    electrique = "electrique"
+
+
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     brand: Mapped[str] = mapped_column(String(100), nullable=False)
     model: Mapped[str] = mapped_column(String(100), nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
     mileage: Mapped[int] = mapped_column(Integer, nullable=False)
+    color: Mapped[str] = mapped_column(String(50), nullable=False)
+    fuel_type: Mapped[FuelType] = mapped_column(Enum(FuelType), nullable=False)
+    description: Mapped[str] = mapped_column(String(2000), default="", nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     price_sale: Mapped[float | None] = mapped_column(Float, nullable=True)
     price_rent_monthly: Mapped[float | None] = mapped_column(Float, nullable=True)
     mode: Mapped[VehicleMode] = mapped_column(Enum(VehicleMode), nullable=False)

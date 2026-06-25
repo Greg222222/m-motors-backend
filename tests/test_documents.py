@@ -8,7 +8,16 @@ def auth_header(token):
 def _create_dossier(client, client_token, admin_token):
     vehicle = client.post(
         "/vehicles",
-        json={"brand": "Renault", "model": "Clio", "mileage": 1000, "price_sale": 9000, "mode": "sale"},
+        json={
+            "brand": "Renault",
+            "model": "Clio",
+            "year": 2022,
+            "mileage": 1000,
+            "color": "Bleu",
+            "fuel_type": "essence",
+            "price_sale": 9000,
+            "mode": "sale",
+        },
         headers=auth_header(admin_token),
     ).json()
     dossier = client.post(
@@ -84,3 +93,62 @@ def test_list_documents_for_dossier(client, client_token, admin_token, tmp_path,
     response = client.get(f"/documents/{dossier_id}", headers=auth_header(client_token))
     assert response.status_code == 200
     assert len(response.json()) == 1
+
+
+def test_admin_can_list_documents_of_any_dossier(client, client_token, admin_token, tmp_path, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config.settings, "upload_dir", str(tmp_path))
+    dossier_id = _create_dossier(client, client_token, admin_token)
+    client.post(
+        f"/documents/{dossier_id}",
+        files={"file": ("piece.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf")},
+        headers=auth_header(client_token),
+    )
+
+    response = client.get(f"/documents/{dossier_id}", headers=auth_header(admin_token))
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+def test_other_client_cannot_list_documents_of_someone_elses_dossier(
+    client, client_token, admin_token, tmp_path, monkeypatch
+):
+    from app import config
+
+    monkeypatch.setattr(config.settings, "upload_dir", str(tmp_path))
+    dossier_id = _create_dossier(client, client_token, admin_token)
+
+    client.post("/auth/register", json={"email": "intruder@example.com", "password": "Password123"})
+    intruder_token = client.post(
+        "/auth/login", data={"username": "intruder@example.com", "password": "Password123"}
+    ).json()["access_token"]
+
+    response = client.get(f"/documents/{dossier_id}", headers=auth_header(intruder_token))
+    assert response.status_code == 404
+
+
+def test_download_document_returns_file_content(client, client_token, admin_token, tmp_path, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config.settings, "upload_dir", str(tmp_path))
+    dossier_id = _create_dossier(client, client_token, admin_token)
+    document_id = client.post(
+        f"/documents/{dossier_id}",
+        files={"file": ("piece.pdf", io.BytesIO(b"%PDF-1.4 hello"), "application/pdf")},
+        headers=auth_header(client_token),
+    ).json()["id"]
+
+    response = client.get(f"/documents/{dossier_id}/{document_id}/file", headers=auth_header(admin_token))
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4 hello"
+
+
+def test_download_unknown_document_returns_404(client, client_token, admin_token, tmp_path, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config.settings, "upload_dir", str(tmp_path))
+    dossier_id = _create_dossier(client, client_token, admin_token)
+
+    response = client.get(f"/documents/{dossier_id}/999/file", headers=auth_header(client_token))
+    assert response.status_code == 404
